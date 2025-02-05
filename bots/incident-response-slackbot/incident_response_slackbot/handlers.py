@@ -45,7 +45,9 @@ class InboundDirectMessageHandler(BaseMessageHandler):
         user_awareness = await get_user_awareness(event["text"])
         logger.info(f"User awareness decision: {user_awareness}")
 
-        if user_awareness["has_answered"]:
+        if user_awareness.get("needs_context", False):
+            await self.provide_additional_context(user_id, message_ts)
+        elif user_awareness["has_answered"]:
             await self.handle_user_response(user_id, message_ts)
         else:
             await self.nudge_user(user_id, message_ts)
@@ -134,6 +136,32 @@ class InboundDirectMessageHandler(BaseMessageHandler):
         await self._slack_client.post_message(
             channel=self.config.feed_channel_id,
             text=f"Sent message to <@{user_id}>:\n> {nudge_message}",
+            thread_ts=message_ts,
+        )
+
+    async def provide_additional_context(self, user_id, message_ts):
+        # Get the thread messages to provide context
+        messages = await self._slack_client.get_thread_messages(
+            channel=self.config.feed_channel_id,
+            thread_ts=message_ts,
+        )
+        
+        # Convert messages to a readable format
+        context = messages_to_string(messages)
+        
+        # Create a context response
+        context_message = f"Here's some additional context about the incident:\n{context}"
+        
+        # Send the context message to the user
+        await self._slack_client.post_message(
+            channel=user_id,
+            text=context_message,
+        )
+
+        # Send message to the channel
+        await self._slack_client.post_message(
+            channel=self.config.feed_channel_id,
+            text=f"Sent additional context to <@{user_id}>",
             thread_ts=message_ts,
         )
 

@@ -48,20 +48,24 @@ async def create_greeting(username, details):
 aware_decision_function = [
     {
         "name": "is_user_aware",
-        "description": "Determines if the user has answered whether they were aware, and what that response is.",
+        "description": "Determines if the user has answered whether they were aware, what that response is, and if they need more context.",
         "parameters": {
             "type": "object",
             "properties": {
                 "has_answered": {
                     "type": "boolean",
-                    "description": "Determine whether user answered the quesiton of whether they were aware.",
+                    "description": "Determine whether user answered the question of whether they were aware.",
                 },
                 "is_aware": {
                     "type": "boolean",
                     "description": "Determine whether user was aware of the alert details.",
                 },
+                "needs_context": {
+                    "type": "boolean",
+                    "description": "Determine whether user is asking for more context or clarification about the alert.",
+                }
             },
-            "required": ["has_answered", "is_aware"],
+            "required": ["has_answered", "is_aware", "needs_context"],
         },
     }
 ]
@@ -69,15 +73,20 @@ aware_decision_function = [
 
 async def get_user_awareness(inbound_direct_message: str) -> str:
     """
-    This function uses the OpenAI Chat Completion API to determine whether user was aware.
+    This function uses the OpenAI Chat Completion API to determine whether user was aware
+    and if they need more context.
     """
     # Define the prompt
     prompt = f"""
     You are a helpful cybersecurity AI analyst assistant to the security team that wants to keep
     your company secure. You just received an alert and are having a chat with the user whether
-    they were aware about the details of an alert. Based on the chat so far, determine whether
-    the user has answered the question of whether they were aware of the alert details, and whether
-    they were aware or not.
+    they were aware about the details of an alert. Based on the chat so far:
+    1. Determine whether the user has answered the question of whether they were aware of the alert details
+    2. Determine whether they were aware or not
+    3. Determine if the user is asking for more information, context, or clarification about the alert
+    
+    Consider responses like "What alert?", "Can you tell me more?", "What are you referring to?", 
+    "I need more details", etc. as requests for more context.
     """
 
     messages = [
